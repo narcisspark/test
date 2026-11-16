@@ -1,0 +1,13 @@
+[Unit]
+Description=Archive paper trading reports and sealed market logs to private S3
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=paper
+Group=paper
+EnvironmentFile=/etc/trading-paper/run.env
+ExecStart=/bin/bash /opt/trading-paper/deploy/aws/backup.sh
+TimeoutStartSec=240
+StandardOutput=append:/var/lib/trading-paper/backup.log
+StandardError=append:/var/lib/trading-paper/backup.log

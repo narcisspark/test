@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up paper trading results every five minutes
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target

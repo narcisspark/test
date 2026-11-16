@@ -1,0 +1,48 @@
+{
+  "mode": "PAPER",
+  "default_markets": ["KRW-BTC"],
+  "initial_cash_krw": 10000000,
+  "execution": {
+    "fee_bps_per_side": 5.0,
+    "slippage_bps": 5.0,
+    "fallback_spread_bps_total": 10.0,
+    "minimum_order_krw": 5000
+  },
+  "risk": {
+    "stop_loss_pct": 0.01,
+    "take_profit_pct": 0.02,
+    "max_holding_minutes": 30,
+    "max_position_equity_pct": 0.20,
+    "max_total_exposure_pct": 0.60,
+    "max_positions": 3,
+    "risk_per_trade_pct": 0.005,
+    "daily_loss_stop_pct": 0.02,
+    "max_entries_per_day": 10,
+    "max_consecutive_stops": 3
+  },
+  "feed": {
+    "max_quote_age_seconds": 10,
+    "pending_signal_max_seconds": 120,
+    "warmup_candles_per_market": 200,
+    "max_reconnect_backoff_seconds": 30
+  },
+  "strategies": {
+    "A": {
+      "name": "Trend + momentum breakout",
+      "ema_fast": 5,
+      "ema_slow": 20,
+      "breakout_bars": 6,
+      "volume_lookback": 20,
+      "volume_multiple": 1.5
+    },
+    "B": {
+      "name": "VWAP mean reversion",
+      "deviation_below_vwap_pct": 0.004,
+      "require_close_above_previous": true
+    },
+    "C": {
+      "name": "KST midnight opening-range breakout",
+      "opening_range_bars": 15
+    }
+  }
+}

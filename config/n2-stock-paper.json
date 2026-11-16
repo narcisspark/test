@@ -1,0 +1,78 @@
+{
+  "mode": "PAPER",
+  "enabled": false,
+  "run_days": 7,
+  "market": "KRX",
+  "bar_interval_minutes": 5,
+  "session_timezone": "Asia/Seoul",
+  "initial_cash_krw": 1000000,
+  "universe": {
+    "method": "fixed_watchlist",
+    "symbols": ["005930"],
+    "verified_symbols": [],
+    "max_symbols": 5,
+    "scope_note": "Pilot watchlist: Samsung Electronics only, chosen because it was the Stage 0 quote-validation symbol. This is not a market-wide scan."
+  },
+  "data_gate": {
+    "quote_freshness_verified": false,
+    "market_status_codes_verified": false,
+    "five_minute_bar_completion_verified": false,
+    "instrument_master_filter_verified": false
+  },
+  "market_data": {
+    "accepted_market_status_codes": [],
+    "bar_time_label": null,
+    "complete_bar_lag_seconds": 60,
+    "quote_freshness_seconds": 15
+  },
+  "strategy": {
+    "name": "rule_breakout",
+    "ema_fast": 5,
+    "ema_slow": 20,
+    "breakout_bars": 6,
+    "volume_lookback": 20,
+    "volume_multiple": 1.5,
+    "entry_window_start_kst": "09:10",
+    "entry_window_end_kst": "14:50"
+  },
+  "execution": {
+    "spread_bps_total": 30,
+    "slippage_bps": 10,
+    "commission_bps_per_side": 5,
+    "sell_tax_bps": {
+      "KRX": 0
+    },
+    "costs_verified": false,
+    "price_tick_model": "whole_won_approximation",
+    "cooldown_after_exit_minutes": 15
+  },
+  "risk": {
+    "stop_loss_pct": 0.01,
+    "take_profit_pct": 0.02,
+    "max_holding_minutes": 30,
+    "max_position_equity_pct": 0.2,
+    "max_total_exposure_pct": 0.6,
+    "max_positions": 3,
+    "risk_per_trade_pct": 0.005,
+    "daily_loss_stop_pct": 0.02,
+    "max_entries_per_day": 10,
+    "max_consecutive_stops": 3
+  },
+  "llm": {
+    "enabled": false,
+    "provider": "amazon-bedrock",
+    "model_id": null,
+    "max_candidates_per_batch": 5,
+    "decision_ttl_minutes": 5,
+    "timeout_seconds": 8,
+    "max_retries": 1,
+    "failure_action": "WAIT"
+  },
+  "assumptions": [
+    "A: rule-only breakout entry.",
+    "B: the same entry signal, admitted only by a fresh matching LLM ALLOW_ENTRY decision; missing/failed/expired decisions wait.",
+    "Each strategy starts with an independent KRW 1,000,000 paper account.",
+    "Fees, tax, spread, slippage and price tick settings are provisional until verified for the account and test date.",
+    "Never use incomplete bars, stale quotes, or unknown market status for a new entry."
+  ]
+}

@@ -1,0 +1,29 @@
+[Unit]
+Description=Upbit public data weekly paper trading
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=paper
+Group=paper
+WorkingDirectory=/opt/trading-paper
+EnvironmentFile=/etc/trading-paper/run.env
+ExecStart=/opt/trading-paper/venv/bin/python -u -m trading_paper paper run-service --markets KRW-BTC --config /opt/trading-paper/config/crypto-paper.json --run-id ${RUN_ID} --deadline ${DEADLINE} --output-dir /var/lib/trading-paper/runs
+ExecStopPost=+/bin/bash /opt/trading-paper/deploy/aws/finish.sh
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=120
+KillSignal=SIGTERM
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/trading-paper
+StandardOutput=append:/var/lib/trading-paper/service.log
+StandardError=append:/var/lib/trading-paper/service.log
+
+[Install]
+WantedBy=multi-user.target
