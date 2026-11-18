@@ -1,0 +1,2 @@
+date,equity,ret,bench_equity,bench_ret,held,note
+2026-11-17,10000000.0,0.0,10000000.0,0.0,0,start (signal at this close, exposure from next day)

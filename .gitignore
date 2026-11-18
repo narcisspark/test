@@ -24,3 +24,5 @@ logs/
 *.gz
 *.csv
 *.jsonl
+# paper-trading ledgers are small and must be versioned
+!paper/**/*.csv
