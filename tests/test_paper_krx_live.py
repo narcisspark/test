@@ -83,3 +83,15 @@ def test_dual_momentum_decides_once_a_month():
     assert s2["accounts"]["dualmom126"]["weights"] == [0.0, 0.0, 1.0]
     assert pk._last_weekday_of_month(datetime(2026, 11, 30).date())  # Monday Nov 30 is the last weekday
     assert not pk._last_weekday_of_month(datetime(2026, 11, 27).date())
+
+
+def test_live_quote_falls_back_when_yahoo_is_stale_or_fails():
+    stale = lambda c: ("2026-11-18", 100.0, "yahoo 15:30")  # noqa: E731
+    fresh = lambda c: ("2026-11-19", 101.0, "naver_daily")  # noqa: E731
+
+    def boom(c):
+        raise OSError("down")
+
+    assert pk.fetch_live("069500", "2026-11-19", (stale, fresh))[2] == "naver_daily"
+    assert pk.fetch_live("069500", "2026-11-19", (boom, fresh))[1] == 101.0
+    assert pk.fetch_live("069500", "2026-11-19", (stale, stale))[0] == "2026-11-18"  # holiday: stays stale

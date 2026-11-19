@@ -49,20 +49,38 @@ def fetch_history(code: str) -> list[tuple[str, float, float]]:
     raise RuntimeError(f"history unavailable for {code}")
 
 
-def fetch_live(code: str) -> tuple[str, float, str]:
-    """(KST date of the quote, price, source)."""
-    try:
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{code}.KS?range=1d&interval=1m"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (research script)"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            meta = json.loads(r.read())["chart"]["result"][0]["meta"]
-        ts = datetime.fromtimestamp(meta["regularMarketTime"], tz=KST)
-        return ts.date().isoformat(), float(meta["regularMarketPrice"]), f"yahoo {ts:%H:%M}"
-    except Exception:
-        from download_krx_daily import from_naver
+def _yahoo_live(code: str) -> tuple[str, float, str]:
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{code}.KS?range=1d&interval=1m"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (research script)"})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        meta = json.loads(r.read())["chart"]["result"][0]["meta"]
+    ts = datetime.fromtimestamp(meta["regularMarketTime"], tz=KST)
+    return ts.date().isoformat(), float(meta["regularMarketPrice"]), f"yahoo {ts:%H:%M}"
 
-        last = from_naver(code)[-1]
-        return last["date"], float(last["close"]), "naver_daily"
+
+def _naver_live(code: str) -> tuple[str, float, str]:
+    from download_krx_daily import from_naver
+
+    last = from_naver(code)[-1]  # today's in-progress daily bar while the market is open
+    return last["date"], float(last["close"]), "naver_daily"
+
+
+def fetch_live(code: str, today: str | None = None, sources=None) -> tuple[str, float, str]:
+    """(KST date of the quote, price, source). Yahoo KRX quotes lag ~20 min, so right after the open they
+    still carry yesterday's date; in that case (or on error) use Naver's in-progress daily bar."""
+    today = today or datetime.now(KST).date().isoformat()
+    first = None
+    for fn in sources or (_yahoo_live, _naver_live):
+        try:
+            q = fn(code)
+        except Exception:
+            continue
+        if q[0] == today:
+            return q
+        first = first or q
+    if first is None:
+        raise RuntimeError(f"no live quote for {code}")
+    return first  # stale everywhere: caller treats it as market closed
 
 
 # ------------------------------------------------------------------------------------------ logic
@@ -176,7 +194,7 @@ def main() -> None:
     sp = d / "state.json"
     state = json.loads(sp.read_text()) if sp.exists() else None
     now = datetime.now(KST)
-    live = {c: fetch_live(c) for c in CODES}
+    live = {c: fetch_live(c, now.date().isoformat()) for c in CODES}
     hist = {c: fetch_history(c) for c in CODES} if now.hour >= DECISION_HOUR else {}
     state, info, marks, trades = step(state, now, hist, live)
     print(f"{info} live={live}")
