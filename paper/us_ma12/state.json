@@ -2,14 +2,14 @@
   "strategy": "S&P 500 monthly MA(12) via SPY, cash in T-bills",
   "cost_per_side": 0.001,
   "start_date": "2026-11-18",
-  "last_date": "2026-11-18",
+  "last_date": "2026-11-19",
   "w": 1.0,
-  "prev_w": 0.0,
-  "equity": 10000.0,
-  "bench": 10000.0,
-  "bench_in": false,
+  "prev_w": 1.0,
+  "equity": 9793.752165841093,
+  "bench": 9793.752165841093,
+  "bench_in": true,
   "peak": 10000.0,
-  "mdd": 0.0,
+  "mdd": -0.02062478341589069,
   "bench_peak": 10000.0,
-  "bench_mdd": 0.0
+  "bench_mdd": -0.02062478341589069
 }
