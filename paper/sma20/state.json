@@ -2,13 +2,13 @@
   "strategy": "SMA(20) daily trend filter",
   "cost_per_side": 0.0015,
   "start_date": "2026-11-17",
-  "last_date": "2026-11-17",
+  "last_date": "2026-11-18",
   "equity": 10000000.0,
-  "bench_equity": 10000000.0,
+  "bench_equity": 9777641.504571185,
   "peak": 10000000.0,
   "mdd": 0.0,
   "bench_peak": 10000000.0,
-  "bench_mdd": 0.0,
+  "bench_mdd": -0.022235849542881603,
   "pos": {
     "KRW-BTC": 0.0,
     "KRW-ETH": 0.0,
@@ -30,13 +30,13 @@
     "KRW-ETC": 0.0
   },
   "bench_in": {
-    "KRW-BTC": false,
-    "KRW-ETH": false,
-    "KRW-XRP": false,
-    "KRW-ADA": false,
-    "KRW-DOGE": false,
-    "KRW-SOL": false,
-    "KRW-LINK": false,
-    "KRW-ETC": false
+    "KRW-BTC": true,
+    "KRW-ETH": true,
+    "KRW-XRP": true,
+    "KRW-ADA": true,
+    "KRW-DOGE": true,
+    "KRW-SOL": true,
+    "KRW-LINK": true,
+    "KRW-ETC": true
   }
 }
