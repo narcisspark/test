@@ -6,9 +6,12 @@ Creates, all tagged project=trading-paper:
   - Lambda    trading-paper-vbo-paper    (python3.12, 128 MB, 60 s, code = tools/vbo_live_lambda.py)
   - Log group /aws/lambda/trading-paper-vbo-paper (14-day retention)
   - EventBridge rule trading-paper-vbo-every-5min (rate(5 minutes)) -> the Lambda
-State goes to s3://BUCKET/paper/vbo/ in an existing bucket. Nothing places orders.
+State goes to s3://<bucket>/paper/vbo/ in an EXISTING bucket of the same account. Nothing places orders.
 
-Usage: python3.11 tools/deploy_vbo_lambda.py [--invoke] | --delete
+Only the AWS CLI profile "jyp" may be used (project rule). The script refuses to run otherwise.
+
+Usage: python3.11 tools/deploy_vbo_lambda.py --bucket <existing-bucket-in-jyp-account> [--invoke]
+       python3.11 tools/deploy_vbo_lambda.py --delete
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from pathlib import Path
 import boto3
 
 REGION = "ap-northeast-2"
-BUCKET = "trading-paper-archive-380821404749-ap-northeast-2"
+PROFILE = "jyp"  # project rule: never deploy with any other credentials
 PREFIX = "paper/vbo/"
 ROLE = "trading-paper-vbo-lambda"
 FUNC = "trading-paper-vbo-paper"
@@ -38,8 +41,18 @@ def _zip() -> bytes:
     return buf.getvalue()
 
 
-def deploy(invoke: bool) -> None:
-    s = boto3.Session(region_name=REGION)
+def session() -> boto3.Session:
+    if PROFILE not in boto3.Session().available_profiles:
+        raise SystemExit(f'AWS profile "{PROFILE}" is not configured here; this project deploys only with "{PROFILE}".')
+    s = boto3.Session(profile_name=PROFILE, region_name=REGION)
+    ident = s.client("sts").get_caller_identity()
+    print(f"using profile {PROFILE}: account {ident['Account']} ({ident['Arn'].split(':')[-1]})")
+    return s
+
+
+def deploy(bucket: str, invoke: bool) -> None:
+    s = session()
+    s.client("s3").head_bucket(Bucket=bucket)  # must already exist in this account; we never create buckets
     iam, lam, ev, logs = s.client("iam"), s.client("lambda"), s.client("events"), s.client("logs")
     account = s.client("sts").get_caller_identity()["Account"]
     trust = {"Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]}
@@ -51,8 +64,8 @@ def deploy(invoke: bool) -> None:
         print(f"role created: {role_arn}")
     log_arn = f"arn:aws:logs:{REGION}:{account}:log-group:/aws/lambda/{FUNC}"
     policy = {"Version": "2012-10-17", "Statement": [
-        {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject"], "Resource": f"arn:aws:s3:::{BUCKET}/{PREFIX}*"},
-        {"Effect": "Allow", "Action": ["s3:ListBucket"], "Resource": f"arn:aws:s3:::{BUCKET}", "Condition": {"StringLike": {"s3:prefix": [f"{PREFIX}*"]}}},
+        {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject"], "Resource": f"arn:aws:s3:::{bucket}/{PREFIX}*"},
+        {"Effect": "Allow", "Action": ["s3:ListBucket"], "Resource": f"arn:aws:s3:::{bucket}", "Condition": {"StringLike": {"s3:prefix": [f"{PREFIX}*"]}}},
         {"Effect": "Allow", "Action": ["logs:CreateLogStream", "logs:PutLogEvents"], "Resource": f"{log_arn}:*"}]}
     iam.put_role_policy(RoleName=ROLE, PolicyName="vbo-paper-minimal", PolicyDocument=json.dumps(policy))
     try:
@@ -60,7 +73,7 @@ def deploy(invoke: bool) -> None:
     except logs.exceptions.ResourceAlreadyExistsException:
         pass
     logs.put_retention_policy(logGroupName=f"/aws/lambda/{FUNC}", retentionInDays=14)
-    env = {"Variables": {"BUCKET": BUCKET, "PREFIX": PREFIX}}
+    env = {"Variables": {"BUCKET": bucket, "PREFIX": PREFIX}}
     code = _zip()
     try:
         lam.get_function(FunctionName=FUNC)
@@ -97,7 +110,7 @@ def deploy(invoke: bool) -> None:
 
 
 def delete() -> None:
-    s = boto3.Session(region_name=REGION)
+    s = session()
     iam, lam, ev, logs = s.client("iam"), s.client("lambda"), s.client("events"), s.client("logs")
     for fn, kw in ((ev.remove_targets, dict(Rule=RULE, Ids=["vbo"])), (ev.delete_rule, dict(Name=RULE)),
                    (lam.delete_function, dict(FunctionName=FUNC)), (logs.delete_log_group, dict(logGroupName=f"/aws/lambda/{FUNC}")),
@@ -106,12 +119,18 @@ def delete() -> None:
             fn(**kw); print(f"deleted: {fn.__name__} {kw}")
         except Exception as exc:
             print(f"skip {fn.__name__}: {type(exc).__name__}")
-    print(f"S3 records under s3://{BUCKET}/{PREFIX} are kept.")
+    print(f"S3 records under paper/vbo/ are kept.")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--delete", action="store_true")
+    ap.add_argument("--bucket", help="existing S3 bucket in the jyp account for state/records")
     ap.add_argument("--invoke", action="store_true", help="invoke once right after deploying")
     a = ap.parse_args()
-    delete() if a.delete else deploy(a.invoke)
+    if a.delete:
+        delete()
+    elif not a.bucket:
+        ap.error("--bucket is required for deploy")
+    else:
+        deploy(a.bucket, a.invoke)
