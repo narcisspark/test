@@ -85,6 +85,12 @@ def equity(state: dict, prices: dict) -> float:
     return tot
 
 
+def _px(v: float | None) -> str:
+    if not v:
+        return "-"
+    return f"{v:,.0f}" if v >= 1000 else f"{v:,.4g}"
+
+
 def status_md(state: dict, prices: dict) -> str:
     eq = equity(state, prices)
     tr = state["trades"]
@@ -98,9 +104,9 @@ def status_md(state: dict, prices: dict) -> str:
              f"## 오늘({state['day']} UTC) 종목별 상태", "", "| 종목 | 목표가 | 현재가 | 매수 가능 | 보유 |", "|---|---:|---:|---|---|"]
     for m, c in state["coins"].items():
         s = c["setup"] or {}
-        tgt = f"{s['target']:,.4g}" if s.get("target") else "-"
-        pos = f"{c['pos']['entry']:,.4g}에 매수" if c["pos"] else ("오늘 거래함" if c["traded_today"] else "-")
-        lines.append(f"| {m} | {tgt} | {prices.get(m, 0):,.4g} | {'예' if s.get('eligible') else '아니오 (' + s.get('reason', '') + ')'} | {pos} |")
+        tgt = _px(s.get("target"))
+        pos = f"{_px(c['pos']['entry'])}에 매수" if c["pos"] else ("오늘 거래함" if c["traded_today"] else "-")
+        lines.append(f"| {m} | {tgt} | {_px(prices.get(m))} | {'예' if s.get('eligible') else '아니오 (' + s.get('reason', '') + ')'} | {pos} |")
     return "\n".join(lines) + "\n"
 
 
