@@ -22,7 +22,7 @@
 ## 실행 환경
 
 - AWS Lambda(서울), 5분마다 EventBridge 규칙으로 실행. 업비트 공개 시세 API만 호출한다(인증 없음).
-- AWS는 **`jyp` 프로필 계정만** 쓴다(프로젝트 규칙). 배포 스크립트는 다른 자격증명으로는 실행을 거부한다.
+- AWS는 **jyp 계정(380821404749)만** 쓴다(프로젝트 규칙). `jyp` 프로필이 있으면 그것을, 없으면(클라우드 세션) 그 계정으로 확인되는 자격증명만 쓰고, 다른 계정이면 배포 스크립트가 거부한다.
 - 상태·기록: jyp 계정의 기존 S3 버킷(배포 시 `--bucket`으로 지정) `paper/vbo/` 아래 `state.json`, `trades.csv`, `STATUS.md`. 버킷은 새로 만들지 않는다.
 - 코드: [vbo_live_lambda.py](../tools/vbo_live_lambda.py), 배포: [deploy_vbo_lambda.py](../tools/deploy_vbo_lambda.py) (`--delete`로 전부 제거).
 

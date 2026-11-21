@@ -8,7 +8,8 @@ Creates, all tagged project=trading-paper:
   - EventBridge rule trading-paper-vbo-every-5min (rate(5 minutes)) -> the Lambda
 State goes to s3://<bucket>/paper/vbo/ in an EXISTING bucket of the same account. Nothing places orders.
 
-Only the AWS CLI profile "jyp" may be used (project rule). The script refuses to run otherwise.
+Only the jyp account may be used (project rule): the "jyp" profile if configured, otherwise ambient
+credentials that resolve to the jyp account. Any other account is refused.
 
 Usage: python3.11 tools/deploy_vbo_lambda.py --bucket <existing-bucket-in-jyp-account> [--invoke]
        python3.11 tools/deploy_vbo_lambda.py --delete
@@ -26,7 +27,8 @@ from pathlib import Path
 import boto3
 
 REGION = "ap-northeast-2"
-PROFILE = "jyp"  # project rule: never deploy with any other credentials
+PROFILE = "jyp"  # project rule: only the jyp account may be used
+JYP_ACCOUNT = "380821404749"  # account behind the jyp profile (verified 2026-11-21 from past trading-paper stacks)
 PREFIX = "paper/vbo/"
 ROLE = "trading-paper-vbo-lambda"
 FUNC = "trading-paper-vbo-paper"
@@ -42,11 +44,16 @@ def _zip() -> bytes:
 
 
 def session() -> boto3.Session:
-    if PROFILE not in boto3.Session().available_profiles:
-        raise SystemExit(f'AWS profile "{PROFILE}" is not configured here; this project deploys only with "{PROFILE}".')
-    s = boto3.Session(profile_name=PROFILE, region_name=REGION)
+    """Use the jyp profile when configured; otherwise (e.g. a cloud session with injected credentials) accept the
+    ambient credentials only if they belong to the jyp account. Anything else is refused."""
+    if PROFILE in boto3.Session().available_profiles:
+        s, how = boto3.Session(profile_name=PROFILE, region_name=REGION), f"profile {PROFILE}"
+    else:
+        s, how = boto3.Session(region_name=REGION), "ambient credentials"
     ident = s.client("sts").get_caller_identity()
-    print(f"using profile {PROFILE}: account {ident['Account']} ({ident['Arn'].split(':')[-1]})")
+    if ident["Account"] != JYP_ACCOUNT:
+        raise SystemExit(f"refusing: account {ident['Account']} is not the jyp account {JYP_ACCOUNT}")
+    print(f"using {how}: account {ident['Account']} ({ident['Arn'].split(':')[-1]})")
     return s
 
 
