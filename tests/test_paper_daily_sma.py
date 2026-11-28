@@ -69,3 +69,20 @@ def test_missed_days_are_caught_up_in_order():
     s, _, _ = ps.update(None, _upto(h, dates[300]), dates[300])
     s, rows, _ = ps.update(s, _upto(h, dates[305]), dates[305])
     assert [r["date"] for r in rows] == dates[300:305]  # last_date was dates[299]
+
+
+def test_first_entry_is_recorded_and_reported(tmp_path):
+    # flat prices then a rally: the filter is off at first, then turns on during the rally
+    d0 = date.fromisoformat("2025-01-01")
+    closes = [100.0] * 290 + [100.0 * 1.01 ** k for k in range(1, 31)]
+    h = {"KRW-AAA": [((d0 + timedelta(days=i)).isoformat(), c) for i, c in enumerate(closes)]}
+    dates = [d for d, _ in h["KRW-AAA"]]
+    s, _, _ = ps.update(None, _upto(h, dates[285]), dates[285])
+    assert "first_entry" not in s
+    for k in range(286, len(dates)):
+        s, _, _ = ps.update(s, _upto(h, dates[k]), dates[k])
+    fe = s["first_entry"]
+    assert fe["date"] == dates[290]  # first close above its 20-day average
+    ps.write_status(tmp_path / "S.md", s, tmp_path / "none.csv")
+    md = (tmp_path / "S.md").read_text()
+    assert "첫 진입 이후 비교" in md and fe["date"] in md

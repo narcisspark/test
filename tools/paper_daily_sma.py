@@ -85,6 +85,8 @@ def update(state: dict | None, histories: dict[str, list[tuple[str, float]]], to
         for m, p in pos.items():
             if p:
                 trade_rows.append(dict(date=latest, market=m, action="BUY", close=hist[m][idx[m][latest]][1]))
+        if any(pos.values()):
+            state["first_entry"] = dict(date=latest, equity=INITIAL_KRW, bench=INITIAL_KRW)
         daily_rows.append(dict(date=latest, equity=INITIAL_KRW, ret=0.0, bench_equity=INITIAL_KRW, bench_ret=0.0,
                                held=sum(1 for p in pos.values() if p), note="start (signal at this close, exposure from next day)"))
         return state, daily_rows, trade_rows
@@ -109,6 +111,10 @@ def update(state: dict | None, histories: dict[str, list[tuple[str, float]]], to
         for k, pk, dd in (("equity", "peak", "mdd"), ("bench_equity", "bench_peak", "bench_mdd")):
             state[pk] = max(state[pk], state[k]); state[dd] = min(state[dd], state[k] / state[pk] - 1)
         new = signals_at(d)
+        if any(new.values()) and not state.get("first_entry"):
+            # first time the trend filter turns on: from here we compare how much of the up-leg it captures
+            state["first_entry"] = dict(date=d, equity=state["equity"], bench=state["bench_equity"])
+        state["invested_days"] = state.get("invested_days", 0) + (1 if any(state["pos"].values()) else 0)
         for m in hist:
             if new[m] != state["pos"].get(m, 0.0):
                 trade_rows.append(dict(date=d, market=m, action="BUY" if new[m] else "SELL", close=hist[m][idx[m][d]][1]))
@@ -127,6 +133,17 @@ def _append_csv(path: Path, rows: list[dict]) -> None:
         if new:
             w.writeheader()
         w.writerows(rows)
+
+
+def _since_entry_lines(state: dict) -> list[str]:
+    fe = state.get("first_entry")
+    if not fe:
+        return ["## 첫 진입 이후 비교", "", "- 아직 진입 신호 없음 (모든 코인이 20일 평균 아래). 첫 매수부터 상승 국면 추적을 시작한다.", ""]
+    s_ret = state["equity"] / fe["equity"] - 1
+    b_ret = state["bench_equity"] / fe["bench"] - 1
+    return ["## 첫 진입 이후 비교", "",
+            f"- 첫 매수 신호: {fe['date']} 종가 · 그 뒤 보유한 날: {state.get('invested_days', 0)}일",
+            f"- 첫 진입 이후 전략 {s_ret:+.2%} vs 매수 후 보유 {b_ret:+.2%} (차이 {s_ret - b_ret:+.2%}p)", ""]
 
 
 def write_status(path: Path, state: dict, trades_path: Path) -> None:
@@ -148,6 +165,7 @@ def write_status(path: Path, state: dict, trades_path: Path) -> None:
         f"- 다음 날 보유 코인 ({len(held)}/{len(state['pos'])}): {', '.join(m[4:] for m in held) or '없음 (전부 현금)'}",
         f"- 비용 가정: 편도 {state['cost_per_side']:.2%}",
         "",
+        *_since_entry_lines(state),
         "## 최근 거래 (종가 기준 가상 체결)",
         "",
         "| 날짜 | 코인 | 동작 | 종가 |",
