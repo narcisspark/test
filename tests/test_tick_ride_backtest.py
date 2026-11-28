@@ -63,3 +63,29 @@ def test_flow_reversal_exit_and_hard_stop():
 def test_fees_applied_in_summary():
     s = tr.summarize({"d1": [(0.01, 60), (-0.004, 120)]}, fee=0.0005)
     assert s["n"] == 2 and np.isclose(s["mean_bp"], ((0.01 - 0.001) + (-0.004 - 0.001)) / 2 * 1e4)
+
+
+def test_main_pipeline_runs_end_to_end(tmp_path, monkeypatch):
+    """Synthetic raw records -> build_grid -> all variants -> report (catches wiring bugs in main)."""
+    import gzip
+    import json as _json
+    rng = np.random.default_rng(5)
+    day = tmp_path / "20261113"; day.mkdir()
+    t0 = 1794528000  # 2026-11-13 00:00 UTC
+    px = {"KRW-BTC": 1e8, "KRW-AAA": 1000.0}
+    for hour in range(24):
+        with gzip.open(day / f"{hour:02d}.jsonl.gz", "wt") as f:
+            for sec in range(0, 3600, 2):
+                rx = (t0 + hour * 3600 + sec) * 1000
+                for m in px:
+                    px[m] *= 1 + rng.normal(0, 0.0008)
+                    p = px[m]; tick = p * 0.0002
+                    units = [[p + tick * (k + 1), 5.0, p - tick * (k + 1), 5.0] for k in range(5)]
+                    f.write(_json.dumps({"t": "ob", "m": m, "rx": rx, "u": units}) + "\n")
+                    f.write(_json.dumps({"t": "trade", "m": m, "rx": rx + 1, "p": p, "v": abs(rng.normal(0.5, 0.3)) * (20 if rng.random() < 0.01 else 1),
+                                         "s": "B" if rng.random() < 0.6 else "A"}) + "\n")
+    monkeypatch.setattr(tr, "PERIODS", {"train": ("20261113", "20261113"), "val": ("20261199", "20261199"), "holdout": ("20261199", "20261199")})
+    monkeypatch.setattr(sys, "argv", ["x", "--root", str(tmp_path), "--out", str(tmp_path / "r.json")])
+    tr.main()
+    rep = _json.loads((tmp_path / "r.json").read_text())
+    assert rep["variants_tried"] == 9 and len(rep["train_ranking"]) == 9

@@ -25,7 +25,7 @@ MAX_HOLD = 4 * 3600
 PERIODS = {"train": ("20261113", "20261119"), "val": ("20261120", "20261123"), "holdout": ("20261124", "20261127")}
 ENTRIES = ["burst", "push", "btclead"]
 EXITS = [("Y1", dict(k=3)), ("Y1", dict(k=6)), ("Y2", {})]
-VARIANTS = [(e, x, xp) for e in ENTRIES for x, xp in EXITS]
+VARIANTS = [(e, x, tuple(sorted(xp.items()))) for e in ENTRIES for x, xp in EXITS]  # hashable keys
 
 
 # ------------------------------------------------------------------------------------------ features
@@ -174,7 +174,7 @@ def main() -> None:
                     continue
                 masks = {e: entry_mask(e, g, btc) for e in ENTRIES}
                 for e, x, xp in VARIANTS:
-                    trades[(e, x, xp)].setdefault((period, day), []).extend(simulate(g, masks[e], x, xp))
+                    trades[(e, x, xp)].setdefault((period, day), []).extend(simulate(g, masks[e], x, dict(xp)))
             print(f"  {period} {day}: {len(grid)} markets", flush=True)
             del grid
 
@@ -183,7 +183,7 @@ def main() -> None:
 
     rows = []
     for v in VARIANTS:
-        rows.append(dict(entry=v[0], exit=v[1], exit_params=v[2], train=summarize(per(v, "train"), FEE),
+        rows.append(dict(entry=v[0], exit=v[1], exit_params=dict(v[2]), train=summarize(per(v, "train"), FEE),
                          train_2x=summarize(per(v, "train"), 2 * FEE), _v=v))
     rows.sort(key=lambda r: -(r["train"].get("mean_bp", -1e9) - r["train"].get("se_bp", 0)))
     print(f"\nvariants tried={len(VARIANTS)}; train ranking by (mean - 1SE), book-walk fills + {2 * FEE:.2%} fees:")
