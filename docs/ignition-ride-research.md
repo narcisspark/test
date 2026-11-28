@@ -64,7 +64,7 @@
 | KRW-LINK | 102,770 | 2025-11-28 13:40 ~ 2026-11-28 13:35 |
 | KRW-ETC | 99,146 | 2025-11-28 13:50 ~ 2026-11-28 13:40 |
 
-- 보관: 이 세션에서는 S3 인증이 실패했다(`InvalidClientTokenId`). 그래서 데이터를 브랜치 `data-upbit5m-20261128`에 `upbit5m.tgz`(약 14 MB, `tar xzf upbit5m.tgz -C data`로 복원)로 보관했다. S3 prefix에는 아직 올리지 못했다.
+- 보관: 이 세션에서는 S3 인증이 실패했다(`InvalidClientTokenId`). 그래서 데이터를 브랜치 `data-upbit5m-20261128`에 `upbit5m.tgz`(약 14 MB, `tar xzf upbit5m.tgz -C data`로 복원)로 보관했다. S3 prefix에는 아직 올리지 못했다. → 2026-11-28 다른 세션에서 jyp 계정 S3 `data/upbit5m/`으로 옮겼다(8개 파일 확인). 다음부터는 `python3 tools/s3_data.py down data/upbit5m data/upbit5m`으로 받는다.
 
 ### 기간 분할과 기준선
 
